@@ -1,0 +1,73 @@
+.TH GMODE 1 "25th September 2019" "PUPS build tools" "PUPS build tools"
+
+.SH NAME
+GMODE \- display current gcc compiler output model on x86_64 or aarch64 architecture
+.br
+
+.SH SYNOPSIS
+.B g32 | g64 
+.B
+[-usage | -help
+] | {
+.B -verbose
+]
+>& <log file>
+.br
+
+.SH DESCRIPTION
+.I gmode(1)
+is a utility which displays the current output model for a gcc comipler running on x86_64
+compliant Intel architecture or aarch64 complaint ARM architecture. 
+.br
+
+.SH OPTIONS
+
+.B -usage | -help
+display help and copyright information for the
+.I gmode(1)
+utility.
+.br
+
+.B -verbose
+toggle
+.B verbose
+mode (error and status information is logged to
+.I standard error
+).
+.br
+
+.SH FILES
+
+.B $HOME/gccMultiMode.cf
+which contains the current output mode flag, that is either
+.B -m32
+or
+.B -m64
+.br
+
+.B /usr/bin/gcc64
+is the base (64 bit) gcc compiler. When
+.I gmode(1)
+is installed the existing
+.B gcc
+compiler
+.B /usr/bin/gcc
+is copied here.
+.br
+
+.SH ENVIRONMENT VARIABLES
+None.
+.br
+
+.SH COPYRIGHT
+(C) Tumbling Dice.
+.br
+
+.SH PROGRAMMER
+M.A. O'Neill.
+.br
+
+.SH SEE ALSO
+gccModeDriver(1), gm32(1), gm64(1)
+.br
+

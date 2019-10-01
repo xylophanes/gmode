@@ -1,0 +1,4 @@
+# gcc output mode file (version 2.00)
+# (C) M.A. O'Neill, Tumbling Dice, 2007-2019
+
+-m64
