@@ -16,8 +16,8 @@ To disable gmode
 Type:
 ./uninstall (rturns gcc to default build settings)
 
-32 bit emulation mode
----------------------
+32 bit mode
+-----------
 
 Type:
 gm32
@@ -26,15 +26,10 @@ gm32
 -----------
 
 Type:
-gm32
+gm64
+
 
 Show current mode
------------------
-
-Type:
-gmode
-
-how current mode
 -----------------
 
 Type:
