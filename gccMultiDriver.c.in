@@ -7,7 +7,7 @@
             NE3 4RT
 
     Version: 2.00 
-    Dated:   25th Septmeber 2019 
+    Dated:   8th Ocotber 2023 
     Email:   mao@tumblingdice.co.uk
 -------------------------------------------------------------------------------------------------*/
 
@@ -175,11 +175,12 @@ _PUBLIC int main(int argc, char *argv[])
     {
 
        #ifdef X86_64
-       (void)fprintf(stderr,"\n%s [x86_64 MultiDriver) (version %s) (C) Tumbling Dice 2007-2019\n\n",cmdStr,GCC_MULTI_DRIVER_VERSION);
+       (void)fprintf(stderr,"\n%s [x86_64 MultiDriver) (version %s) (C) Tumbling Dice 2007-2023\n\n",cmdStr,GCC_MULTI_DRIVER_VERSION);
        #else
-       (void)fprintf(stderr,"\n%s [aarch64 MultiDriver) (version %s) (C) Tumbling Dice 2007-2019\n\n",cmdStr,GCC_MULTI_DRIVER_VERSION);
+       (void)fprintf(stderr,"\n%s [aarch64 MultiDriver) (version %s) (C) Tumbling Dice 2007-2023\n\n",cmdStr,GCC_MULTI_DRIVER_VERSION);
        #endif /* X86_64 */
 
+       (void)fprintf(stderr,"Built %s,%s\n",__TIME,__DATE__);
        (void)fprintf(stderr,"GCCMULTIDRIVER is free software, covered by the GNU General Public License, and you are\n");
        (void)fprintf(stderr,"welcome to change it and/or distribute copies of it under certain conditions.\n");
        (void)fprintf(stderr,"See the GPL and LGPL licences at www.gnu.org for further details\n");

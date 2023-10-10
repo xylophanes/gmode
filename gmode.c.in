@@ -7,7 +7,7 @@
             NE3 4RT
 
     Version: 2.00 
-    Dated:   25th September 2019 
+    Dated:   10th October 2023 
     E-mail:  mao@tumblingdice.co.uk
 --------------------------------------------------------------------------------------------------------*/
 
@@ -94,7 +94,11 @@ _PRIVATE int getGccMode(FILE *stream, char *modeStr)
 {   _BOOLEAN looper    = TRUE;
     char     line[256] = "";
 
+
+    /*-------------------*/
     /* Skip any comments */
+    /*-------------------*/
+
     do {
 
 next_line:
@@ -123,7 +127,7 @@ next_line:
 _PRIVATE int putGccMode(FILE *stream, char *modeStr)
 
 {   (void)fprintf(stream,"# gcc output mode file (version %s)\n",GMODE_VERSION);
-    (void)fprintf(stream,"# (C) M.A. O'Neill, Tumbling Dice, 2007-2017\n\n");
+    (void)fprintf(stream,"# (C) M.A. O'Neill, Tumbling Dice, 2007-2023\n\n");
     (void)fprintf(stream,"%s\n",modeStr);
     (void)fflush(stream);
 
@@ -195,7 +199,8 @@ _PUBLIC int main(int argc, char *argv[])
  
     for(i=0; i<argc; ++i)
     {  if(strcmp(argv[i],"-help") == 0 || strcmp(argv[i],"-usage") == 0)
-       {  (void)fprintf(stderr,"\ngmode (version %s) (C) Tumbling Dice 2007-2017\n\n",GMODE_VERSION);
+       {  (void)fprintf(stderr,"\ngmode (version %s) (C) Tumbling Dice 2007-2023\n\n",GMODE_VERSION);
+          (void)fprintf(stderr,"Built %s,%s\n",__TIME__,__DATE__);
           (void)fprintf(stderr,"GMODE is free software, covered by the GNU General Public License, and you are\n");
           (void)fprintf(stderr,"welcome to change it and/or distribute copies of it under certain conditions.\n");
           (void)fprintf(stderr,"See the GPL and LGPL licences at www.gnu.org for further details\n");
