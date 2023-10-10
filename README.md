@@ -10,11 +10,15 @@ To enable gmode
 Type (after building gcc from source) type:
 ./install.csh
 
+This will also install gmode tools (in /bin) and man pages (in /usr/share/man)
+
 To disable gmode
 ----------------
 
 Type:
 ./uninstall (rturns gcc to default build settings)
+
+This will also uninstall gmode tools and man pages.
 
 32 bit mode
 -----------
