@@ -1,0 +1,410 @@
+/*--------------------------------------------------------------------------------------------------------
+    Purpose: Switches the gcc compiler on a X64 architecture between 32 and 64 bit models.
+
+    Author: Mark A. O'Neill
+            Tumbling Dice
+            Gosforth
+            NE3 4RT
+
+    Version: 2.00 
+    Dated:   25th September 2019 
+    E-mail:  mao@tumblingdice.co.uk
+--------------------------------------------------------------------------------------------------------*/
+
+#include <stdio.h>
+#include <string.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
+
+
+/*--------------------------------------------------------------------------------------------------------
+    Defines which are local to this application
+--------------------------------------------------------------------------------------------------------*/
+
+#define GMODE_VERSION               "2.00"
+#define _BOOLEAN                    int
+#define _PUBLIC
+#define _PRIVATE                    static
+#define FALSE                       0
+#define TRUE                        255
+#define GCC_GLOBAL_OUTPUT_MODE_FILE  "/etc/gccmode.cf"
+#define GCC_LOCAL_OUTPUT_MODE_FILE  ".gccmode.cf"
+#define PATH_MAX                    2048
+
+
+
+
+/*-----------------------------------------------------------------------------
+    Look for the occurence of string s2 within string s1 ...
+-----------------------------------------------------------------------------*/
+
+_PUBLIC _BOOLEAN strin(char *s1, char *s2)
+
+{   int i,
+        cmp_size,
+        chk_limit;
+
+    if(strlen(s2) > strlen(s1))
+       return(FALSE);
+
+    chk_limit = strlen(s1) - strlen(s2) + 1;
+    cmp_size  = strlen(s2);
+
+    for(i=0; i<chk_limit; ++i)
+    {  if(strncmp(&s1[i],s2,cmp_size) == 0)
+          return(TRUE);
+    }
+
+    return(FALSE);
+}
+
+
+
+
+
+/*-------------------------------------------------------------------------------------------------
+    Is line composed of whitespace ...
+-------------------------------------------------------------------------------------------------*/
+
+_PRIVATE _BOOLEAN whitespace(char *line)
+
+{  int i;
+
+    for(i=0; i<strlen(line); ++i)
+    {  if(line[i] != '\n' && line[i] != '\t' && line[i] != '\r' && line[i] != '#' && line[i] != ' ')
+          return(FALSE);
+    }
+
+    return(TRUE);
+}
+
+
+
+
+/*-------------------------------------------------------------------------------------------------
+    Get current compiler code generator mode (32 or 64 bits) ...
+-------------------------------------------------------------------------------------------------*/
+
+_PRIVATE int getGccMode(FILE *stream, char *modeStr)
+
+{   _BOOLEAN looper    = TRUE;
+    char     line[256] = "";
+
+    /* Skip any comments */
+    do {
+
+next_line:
+            if(feof(stream) != 0)
+               looper = FALSE;
+            else
+            {  (void)fgets(line,256,stream);
+               if(strin(line,"#") == TRUE || whitespace(line) == TRUE)
+                  goto next_line;
+
+               (void)sscanf(line,"%s",modeStr);
+               return(0);
+            }
+       } while(looper == TRUE);
+
+    return(-1);
+}
+
+
+
+
+/*--------------------------------------------------------------------------------------------------------
+    Put current compiler code generator mode (32 or 64 bits) ...
+--------------------------------------------------------------------------------------------------------*/
+
+_PRIVATE int putGccMode(FILE *stream, char *modeStr)
+
+{   (void)fprintf(stream,"# gcc output mode file (version %s)\n",GMODE_VERSION);
+    (void)fprintf(stream,"# (C) M.A. O'Neill, Tumbling Dice, 2007-2017\n\n");
+    (void)fprintf(stream,"%s\n",modeStr);
+    (void)fflush(stream);
+
+    return(0);
+}
+
+
+
+
+/*-------------------------------------------------------------------------------------------------------
+    Extract filename (leaf) from pathname (branch) ...
+-------------------------------------------------------------------------------------------------------*/
+
+_PRIVATE _BOOLEAN strleaf(char *branch, char *leaf)
+
+{   int i;
+
+    for(i=strlen(branch); i>0; --i)
+    {  if(branch[i] == '/')
+       {  int j;
+
+          (void)strcpy(leaf,(char *)&branch[i+1]);
+          for(j=strlen(leaf); j>0; --j)
+          {  if(leaf[j] == '\n')
+             {  leaf[j] = '\0';
+                break;
+             }
+          }
+
+          return(TRUE);
+       }
+    }
+
+    (void)strcpy(leaf,branch);
+    return(FALSE);
+}
+
+
+
+
+
+/*--------------------------------------------------------------------------------------------------------
+    Main entry point to program ... 
+--------------------------------------------------------------------------------------------------------*/
+
+_PUBLIC int main(int argc, char *argv[])
+
+{   int i,
+        decoded = 1;
+
+    _BOOLEAN verbose = FALSE;
+
+    char modeStr[PATH_MAX]              = "",
+         arch[PATH_MAX]                 = "",
+         tmpstr[PATH_MAX]               = "",
+         gcc_output_mode_file[PATH_MAX] = "",
+         cwd[PATH_MAX]                  = "",
+         cmdStr[PATH_MAX]               = "";
+
+    FILE *stream                        = (FILE *)NULL,
+         *pstream                       = (FILE *)NULL;
+
+
+    /*---------------------------*/
+    /* Strip pathname to command */
+    /*---------------------------*/
+
+    (void)strleaf(argv[0],cmdStr);
+ 
+    for(i=0; i<argc; ++i)
+    {  if(strcmp(argv[i],"-help") == 0 || strcmp(argv[i],"-usage") == 0)
+       {  (void)fprintf(stderr,"\ngmode (version %s) (C) Tumbling Dice 2007-2017\n\n",GMODE_VERSION);
+          (void)fprintf(stderr,"GMODE is free software, covered by the GNU General Public License, and you are\n");
+          (void)fprintf(stderr,"welcome to change it and/or distribute copies of it under certain conditions.\n");
+          (void)fprintf(stderr,"See the GPL and LGPL licences at www.gnu.org for further details\n");
+          (void)fprintf(stderr,"GMODE comes with ABSOLUTELY NO WARRANTY\n\n");
+          (void)fprintf(stderr,"\nUsage: gmode [-usage | -help] | [-verbose] >& <log/error file>\n\n");
+          (void)fflush(stderr);
+
+          exit(1);
+       }
+       else if(strcmp(argv[i],"-verbose") == 0)
+       {  verbose = TRUE;
+          ++decoded;
+       }
+    }
+
+    if(verbose == TRUE)
+    {  (void)fprintf(stderr,"\n%s version %s (C) Tumbling Dice 2007-2019\n\n",cmdStr,GMODE_VERSION);
+       (void)fflush(stderr);
+    }
+
+    if(decoded < argc)
+    {  if(verbose == TRUE)
+       {  (void)fprintf(stderr,"%s: undecoded command tail arguments found\n\n",cmdStr);
+          (void)fflush(stderr);
+       }
+
+       exit(-1);
+    }
+
+
+    /*------------------------------------------------------------------------*/
+    /* Test the sort of system we are running on. It must be an x86_64 system */
+    /* or aarch64 system                                                      */
+    /*------------------------------------------------------------------------*/
+
+    pstream = popen("arch","r");
+    (void)fgets(arch,256,pstream);
+    (void)pclose(pstream);
+
+
+    /*-------*/
+    /* Intel */
+    /*-------*/
+
+    #ifdef X86_64
+    if(strncmp(arch,"x86_64",6) != 0)
+    {  if(verbose == TRUE)
+       {  (void)fprintf(stderr,"%s: [architecture: %s] x86_64 or aarch64 architecture expected\n\n",cmdStr);
+          (void)fflush(stderr);
+       }
+
+       exit(-1);
+    }
+
+
+    /*-----*/
+    /* ARM */
+    /*-----*/
+
+    #else
+    if(strncmp(arch,"aarch64",7) != 0)
+    {  if(verbose == TRUE)
+       {  (void)fprintf(stderr,"%s: [architecture: %s] x86_64 or aarch64 architecture expected\n\n",cmdStr);
+          (void)fflush(stderr);
+       }
+
+       exit(-1);
+    }
+    #endif /* X86_64 */
+
+
+    else
+    {  if(verbose == TRUE)
+       {  (void)fprintf(stderr,"%s: %s system\n",cmdStr,arch);
+          (void)fflush(stderr);
+       }
+    } 
+
+    if(access("BINDIR/gcc64",F_OK) == (-1))
+    {  if(verbose == TRUE)
+       {  (void)fprintf(stderr,"%s: cannot find base (64 bit) gcc compiler \"gcc64\"\n\n",cmdStr);
+          (void)fflush(stderr);
+       }
+
+       exit(-1);
+    }
+
+    /*---------------------------------------------------------------------------------------*/
+    /* If this application is run as gmode simply report the output model currently selected */
+    /* If there is no current model default complain about it and bail!                      */
+    /* This is done on a "per-directory" basis                                               */
+    /*---------------------------------------------------------------------------------------*/
+
+    (void)getcwd(cwd,256);
+    (void)sprintf(gcc_output_mode_file,"%s/%s",cwd,GCC_LOCAL_OUTPUT_MODE_FILE);
+
+    if(strncmp(cmdStr,"gmode",4) == 0)
+    {  if((stream = fopen(gcc_output_mode_file,"r")) == (FILE *)NULL)
+       {  if((stream = fopen(GCC_GLOBAL_OUTPUT_MODE_FILE,"r")) == (FILE *)NULL) 
+          {  if(verbose == TRUE)
+             {  (void)fprintf(stderr,"%s: cannot find gcc output mode file\n",cmdStr);
+                (void)fflush(stderr);
+             }
+
+             exit(-1);
+          }
+       }
+
+       (void)getGccMode(stream, modeStr);
+       (void)fclose(stream);
+
+
+       /*-------*/
+       /* Intel */
+       /*-------*/
+
+       #ifdef X86_64
+       if(strcmp(modeStr,"-m32") == 0)
+       {  (void)printf("%s: gcc output mode 32 bits (i386 emulation mode)\n",cmdStr);
+          (void)fflush(stdout);
+
+          exit(0);
+       }
+       else if(strcmp(modeStr,"-m64") == 0)
+       {  (void)printf("%s: gcc output mode 64 bits (x86_64 mode)\n",cmdStr);
+          (void)fflush(stdout);
+
+          exit(0);
+       }
+
+
+       /*-----*/
+       /* ARM */
+       /*-----*/
+
+       #else
+       if(strcmp(modeStr,"-mabi=ilp32") == 0)
+       {  (void)printf("%s: gcc output mode 32 bits (arm emulation mode)\n",cmdStr);
+          (void)fflush(stdout);
+
+          exit(0);
+       }
+       else if(strcmp(modeStr,"-mabi=lp64") == 0)
+       {  (void)printf("%s: gcc output mode 64 bits (aarch64 mode)\n",cmdStr);
+          (void)fflush(stdout);
+
+          exit(0);
+       }
+       #endif /* X86_64 */
+
+
+       /*-------*/
+       /* Error */
+       /*-------*/
+ 
+       else
+       {  if(verbose == TRUE)
+          {  (void)fprintf(stderr,"%s: corrupt gcc output mode file\n\n",cmdStr);
+             (void)fflush(stderr);
+          }
+
+          exit(-1);
+       }          
+    }
+
+
+    /*----------------------------------------------------------*/
+    /* Set up driver for either a 32 bit or 64 bit output model */
+    /*----------------------------------------------------------*/
+
+    if(strcmp(cmdStr,"gm32") == 0)
+    {  if(verbose == TRUE)
+       {  (void)fprintf(stderr,"%s: setting up gcc compiler for 32 bit output model\n",cmdStr);
+          (void)fflush(stderr);
+       }
+
+       if(access(gcc_output_mode_file,F_OK) == (-1))
+          (void)close(creat(gcc_output_mode_file,0600));
+
+       if((stream = fopen(gcc_output_mode_file,"w")) == (FILE *)NULL)
+       {  (void)fprintf(stderr,"%s: failed to open \"%s\"l\n",gcc_output_mode_file);
+          (void)fflush(stderr);
+       }
+
+ 
+       (void)putGccMode(stream,"-m32");
+       (void)fclose(stream);
+    }
+    else if(strcmp(cmdStr,"gm64") == 0)
+    {  if(verbose == TRUE)
+       {  (void)fprintf(stderr,"%s: setting up gcc compiler for 64 bit output model\n",cmdStr);
+          (void)fflush(stderr);
+       }
+
+       if(access(gcc_output_mode_file,F_OK) == (-1))
+          (void)close(creat(gcc_output_mode_file,0600));
+       stream = fopen(gcc_output_mode_file,"w");
+
+       (void)putGccMode(stream,"-m64");
+       (void)fclose(stream);
+    }
+    else
+    {  if(verbose == TRUE)
+       {  (void)fprintf(stderr,"%s: corrupt gcc output mode file\n\n",cmdStr);
+          (void)fflush(stderr);
+       }
+
+       exit(-1);
+    }
+
+    exit(0);
+}

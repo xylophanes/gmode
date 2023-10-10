@@ -1,0 +1,31 @@
+If you haven't got libiconv, you will need to get if from ftp.gnu.org
+
+Intel
+=====
+
+64 bit build on x86_64:
+
+./configure -prefix=/usr --mandir=/usr/share/man --libdir=/usr/lib64
+
+32 bit build on x86_64:
+
+./configure CC="gcc -m32" -prefix=/usr --mandir=/usr/share/man --libdir=/usr/lib
+
+
+ARM
+===
+
+64 bit build on ARMv8
+
+./configure -prefix=/usr --mandir=/usr/share/man --libdir=/usr/lib64
+
+
+32 bit build on ARMv8:
+
+./configure CC="gcc -mabi=il32" -prefix=/usr --mandir=/usr/share/man --libdir=/usr/lib
+
+
+*************************************
+* ARM build has not been tested yet *
+*************************************
+

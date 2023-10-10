@@ -1,0 +1,189 @@
+#!/bin/bash
+#
+#----------------------------------------------------------
+# Set up links for gcc compiler on Debian/Ubuntu optionally
+# making it the default gcc compiler
+#
+# (C) M.A. O'Neill, Tumbling Dice, 2022
+#----------------------------------------------------------
+
+
+#------
+# Usage
+#------
+
+if [ "$1" = "usage" ]; then
+	echo "    gcc-link version 1.02"
+	echo "    (C) Tumbling Dice, 2022"
+	echo ""
+	echo "    gcc-link usage: !<version>! [default]"
+	echo
+
+	exit 1
+
+
+#-------------
+# Sanity check
+#-------------
+
+elif [ "$1" == "" ]; then
+	echo ""
+	echo "    ERROR gcc-link: gcc compiler version not specified"
+	echo ""
+
+	exit 255
+fi
+
+
+#-------------------------------
+# Check this is Debian
+# (or a derivative distribution)
+#-------------------------------
+
+distro=$(lsb_release -a |& head -2 | tail -1 | awk '{print $3}')
+if [ $distro != Debian ] && [ $distro != Ubuntu ]; then
+	echo ""
+	echo "    ERROR gcc-link: not Debian (or derivative distribution)"
+	echo ""
+
+	exit 255
+fi
+
+
+#-------------------------------------
+# Set version and machine architecture
+#-------------------------------------
+
+version=$1
+arch=$(arch)
+
+
+#-------
+# Banner
+#-------
+
+echo ""
+echo "    gcc-link 1.00"
+echo "    (C) Tumbling dice, 2022"
+echo ""
+echo "    Setting up links for gcc-$version [$distro: $arch]"
+echo ""
+
+
+#------------------------------------
+# Directory containing gcc components
+#------------------------------------
+
+pushd /usr/bin 1> /dev/null 2> /dev/null
+
+
+#----------------------------------
+# Check all components of requested
+# compiler version exist
+#----------------------------------
+
+if [ ! -e $arch-linux-gnu-cpp-$version           ] ; then
+	echo ""
+	echo "    ERROR gcc-link: gcc-$version is missing component $arch-linux-gnu-cpp-$version"
+	echo ""
+
+	exit 255
+fi
+
+if [ ! -e $arch-linux-gnu-gcc-$version           ] ; then
+	echo ""
+	echo "    ERROR gcc-link: gcc-$version is missing component $arch-linux-gnu-gcc-$version"
+	echo ""
+
+	exit 255
+fi
+
+
+if [ ! -e $arch-linux-gnu-g++-$version           ] ; then
+	echo ""
+	echo "    ERROR gcc-link: gcc-$version is missing component $arch-linux-gnu-gcc-$version"
+	echo ""
+
+	exit 255
+fi
+
+if [ ! -e $arch-linux-gnu-gcov-$version          ] ; then
+	echo ""
+	echo "    ERROR gcc-link: gcc-$version is missing component $arch-linux-gnu-gcov-$version"
+	echo ""
+
+	exit 255
+fi
+
+
+if [ ! -e $arch-linux-gnu-gcov-tool-$version     ] ; then 
+	echo ""
+	echo "    ERROR gcc-link: gcc-$version is missing component $arch-linux-gnu-gcov-tool-$version"
+	echo ""
+
+	exit 255
+fi
+
+
+if [ ! -e $arch-linux-gnu-gcov-dump-$version     ] ; then
+	echo ""
+	echo "    ERROR gcc-link: gcc-$version is missing component $arch-linux-gnu-gcov-dump-$version"
+	echo ""
+
+	exit 255
+fi
+
+
+#-----------------
+# Remove old links
+#-----------------
+
+rm cpp-$version         \
+   gcc-$version         \
+   g++-$version         \
+   gfortran-$version    \
+   gcov-$version        \
+   gcov-tool-$version   \
+   gcov-dump-$version   1> /dev/null 2> /dev/null
+
+if [ "$2" == default ] ; then
+	rm cpp gcc g++ gfortran gcov gcov-tool gcov-dump 1> /dev/null 2> /dev/null
+fi
+
+
+#---------
+# Compiler
+#---------
+
+ln -s $arch-linux-gnu-cpp-$version        cpp-$version
+ln -s $arch-linux-gnu-gcc-$version        gcc-$version
+ln -s $arch-linux-gnu-g++-$version        g++-$version
+ln -s $arch-linux-gnu-gfortran-$version   gfortran-$version
+ln -s $arch-linux-gnu-gcov-$version       gcov-$version
+ln -s $arch-linux-gnu-gcov-tool-$version  gcov-tool-$version
+ln -s $arch-linux-gnu-gcov-dump-$version  gcov-dump-$version
+
+
+#----------------------
+# Make compiler default
+#----------------------
+
+if [ "$2" == default ] ; then
+	ln -s cpp-$version           cpp
+	ln -s gcc-$version           gcc
+	ln -s g++-$version           g++
+	ln -s gfortran-$version      gfortran
+	ln -s gcov-$version          gcov
+	ln -s gcov-tool-$version     gcov-tool
+	ln -s gcov-dump-$version     gcov-dump
+fi
+
+popd 1> /dev/null 2> /dev/null
+
+echo ""
+echo "    finished"
+echo ""
+
+exit 0
+
+

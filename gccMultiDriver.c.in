@@ -1,0 +1,486 @@
+/*--------------------------------------------------------------------------------------------------
+    Purpose: transparent 32/64 bit gcc driver for x86_64 compliant architectures.
+
+    Author: Mark A. O'Neill
+            Tumbling Dice
+            Gosforth
+            NE3 4RT
+
+    Version: 2.00 
+    Dated:   25th Septmeber 2019 
+    Email:   mao@tumblingdice.co.uk
+-------------------------------------------------------------------------------------------------*/
+
+#include <stdio.h>
+#include <string.h>
+#include <unistd.h>
+#include <stdlib.h>
+
+
+/*-------------------------------------------------------------------------------------------------
+    Defines which local to this application ...
+-------------------------------------------------------------------------------------------------*/
+
+#define GCC_MULTI_DRIVER_VERSION    "2.00"
+#define _BOOLEAN                    int
+#define _PUBLIC
+#define _PRIVATE                    static
+#define FALSE                       0
+#define TRUE                        255
+#define GCC_GLOBAL_OUTPUT_MODE_FILE "/etc/gccmode.cf"
+#define GCC_LOCAL_OUTPUT_MODE_FILE  ".gccmode.cf"
+#define PATH_MAX                    2048 
+
+
+
+/*-----------------------------------------------------------------------------------------------
+    Look for the occurence of string s2 within string s1 ...
+-----------------------------------------------------------------------------------------------*/
+
+_PUBLIC _BOOLEAN strin(char *s1, char *s2)
+
+{   int i,
+        cmp_size,
+        chk_limit;
+
+    if(strlen(s2) > strlen(s1))
+       return(FALSE);
+
+    chk_limit = strlen(s1) - strlen(s2) + 1;
+    cmp_size  = strlen(s2);
+
+    for(i=0; i<chk_limit; ++i)
+    {  if(strncmp(&s1[i],s2,cmp_size) == 0)
+          return(TRUE);
+    }
+
+    return(FALSE);
+}
+
+
+
+
+/*-------------------------------------------------------------------------------------------------
+    Is line composed of whitespace ...
+-------------------------------------------------------------------------------------------------*/
+
+_PRIVATE _BOOLEAN whitespace(char *line)
+
+{  int i;
+
+    for(i=0; i<strlen(line); ++i)
+    {  if(line[i] != '\n' && line[i] != '\t' && line[i] != '\r' && line[i] != '#' && line[i] != ' ')
+          return(FALSE);
+    }
+
+    return(TRUE);
+}
+
+
+
+
+/*-------------------------------------------------------------------------------------------------
+    Get current compiler code generator mode (32 or 64 bits) ...
+-------------------------------------------------------------------------------------------------*/
+
+_PRIVATE int getGccMode(FILE *stream, char *modeStr)
+
+{   _BOOLEAN looper    = TRUE;
+    char     line[256] = "";
+
+
+    /*-------------------*/
+    /* Skip any comments */
+    /*-------------------*/
+
+    do {
+
+next_line: 
+            if(feof(stream) != 0)
+               looper = FALSE;
+            else
+            {  (void)fgets(line,256,stream);
+               if(strin(line,"#") == TRUE || whitespace(line) == TRUE)
+                  goto next_line;
+
+               (void)sscanf(line,"%s",modeStr);
+               return(0);
+            }
+       } while(looper == TRUE);
+
+    return(-1);
+}
+
+
+
+
+/*-------------------------------------------------------------------------------------------------
+    Extract filename (leaf) from pathname (branch) ...
+-------------------------------------------------------------------------------------------------*/
+
+_PRIVATE _BOOLEAN strleaf(char *branch, char *leaf)
+
+{   int i;
+
+    for(i=strlen(branch); i>0; --i)
+    {  if(branch[i] == '/')
+       {  int j;
+
+          (void)strcpy(leaf,(char *)&branch[i+1]);
+          for(j=strlen(leaf); j>0; --j)
+          {  if(leaf[j] == '\n')
+             {  leaf[j] = '\0';
+                break;
+             }
+          }
+
+          return(TRUE);
+       }
+    }
+
+    (void)strcpy(leaf,branch);
+    return(FALSE);
+}
+
+
+
+
+/*-------------------------------------------------------------------------------------------------
+    Main entry point ...
+-------------------------------------------------------------------------------------------------*/
+
+_PUBLIC int main(int argc, char *argv[])
+
+{   int i;
+
+    char tmpStr[PATH_MAX]               = "",
+         archType[PATH_MAX]             = "",
+         cmdStr[PATH_MAX]               = "",
+         modeStr[PATH_MAX]              = "",
+         cwd[PATH_MAX]                  = "",
+         gcc_output_mode_file[PATH_MAX] = "",
+         **gccArgv                      = { (char **)NULL };
+
+    FILE *pstream                       = (FILE *)NULL,
+         *stream                        = (FILE *)NULL;
+
+
+    /*--------------------------------------------------------------*/
+    /* If we have no arguments display version information and exit */
+    /*--------------------------------------------------------------*/
+
+    (void)strleaf(argv[0],cmdStr);
+
+    if(argc == 1)
+    {
+
+       #ifdef X86_64
+       (void)fprintf(stderr,"\n%s [x86_64 MultiDriver) (version %s) (C) Tumbling Dice 2007-2019\n\n",cmdStr,GCC_MULTI_DRIVER_VERSION);
+       #else
+       (void)fprintf(stderr,"\n%s [aarch64 MultiDriver) (version %s) (C) Tumbling Dice 2007-2019\n\n",cmdStr,GCC_MULTI_DRIVER_VERSION);
+       #endif /* X86_64 */
+
+       (void)fprintf(stderr,"GCCMULTIDRIVER is free software, covered by the GNU General Public License, and you are\n");
+       (void)fprintf(stderr,"welcome to change it and/or distribute copies of it under certain conditions.\n");
+       (void)fprintf(stderr,"See the GPL and LGPL licences at www.gnu.org for further details\n");
+       (void)fprintf(stderr,"GCCMULTIDRIVER comes with ABSOLUTELY NO WARRANTY\n\n");
+       (void)fprintf(stderr,"\nUsage: %s [<gcc command tail>] >& <log/error file>\n\n",cmdStr);
+       (void)fflush(stderr);
+
+       exit(1);
+    }
+
+
+    /*----------------------------------------------------*/
+    /* Are we running on a compliant 64 bit architecture? */
+    /*----------------------------------------------------*/
+
+    pstream = popen("arch","r");
+    (void)fgets(archType,256,pstream);
+    (void)fclose(pstream);
+
+
+    /*----------------*/
+    /* Intel (X86_64) */
+    /*----------------*/
+
+    #ifdef X86_64
+    if(strncmp(archType,"x86_64",6) != 0)
+    {  (void)fprintf(stderr,"%s: [architecture: %s] is not a 64 bit Intel/AMD architecture\n\n",cmdStr,archType);
+       (void)fflush(stderr);
+
+       exit(-1);
+    }
+    else
+
+    /*---------------*/
+    /* ARM (AARCH64) */
+    /*---------------*/
+
+    #else
+
+    if(strncmp(archType,"x86_64",6) != 0)
+    {  (void)fprintf(stderr,"%s: [architecture: %s] is not a 64 bit Intel/AMD architecture\n\n",cmdStr,archType);
+       (void)fflush(stderr);
+
+       exit(-1);
+    }
+    else
+    #endif /* X86_64 */
+
+    {  
+
+       /*-----------------------------------*/
+       /* Do we have a gcc64 base compiler? */
+       /*-----------------------------------*/
+
+       if(access("BINDIR/gcc64",F_OK) == (-1))
+       {  (void)fprintf(stderr,"%s: cannot find base (64 bit) gcc compiler (\"gcc64\")\n\n",cmdStr);
+          (void)fflush(stderr);
+
+          exit(-1);
+       }
+
+
+       /*------------------------------------*/
+       /* Do we have a valid O/P mode file ? */
+       /* look for a local .gccmode.cf first */
+       /*------------------------------------*/
+
+       (void)getcwd(cwd,256);
+       (void)sprintf(gcc_output_mode_file,"%s/%s",cwd,GCC_LOCAL_OUTPUT_MODE_FILE);
+
+       if(access(gcc_output_mode_file,F_OK) == (-1))
+       {  if(access(GCC_GLOBAL_OUTPUT_MODE_FILE,F_OK) == (-1))
+          {  (void)fprintf(stderr,"%s: cannot find output mode file\n\n",cmdStr);
+             (void)fflush(stderr);
+
+             exit(-1);
+          }
+          else
+             (void)strcpy(gcc_output_mode_file,GCC_GLOBAL_OUTPUT_MODE_FILE);
+       }
+
+
+       /*-----------------*/
+       /* Get mode string */
+       /*-----------------*/
+
+       stream = fopen(gcc_output_mode_file,"r");
+
+       (void)getGccMode(stream,modeStr);
+       (void)fclose(stream);
+
+
+       /*-------*/
+       /* Intel */
+       /*-------*/
+
+       #ifdef X86_64
+       if(strcmp(modeStr,"-m32") == 0)
+
+
+       /*-----*/
+       /* ARM */
+       /*-----*/
+       #else
+       if(strcmp(modeStr,"-mabi=ilp32") == 0)
+       #endif /* X86_64 */
+
+       {  int i;
+
+          gccArgv = (char **)calloc(argc + 2,sizeof(char **));
+
+
+          /*---------------------*/
+          /* 32 bit binary model */
+          /*---------------------*/
+
+          gccArgv[0] = (char *)malloc(sizeof("gcc64"));
+          (void)strcpy(gccArgv[0],"gcc64");
+
+
+          /*-------*/
+          /* Intel */
+          /*-------*/
+
+          #ifdef X86_64
+          gccArgv[1] = (char *)malloc(sizeof("-m32"));
+          (void)strcpy(gccArgv[1],"-m32");
+
+
+          /*-----*/
+          /* ARM */
+          /*-----*/
+
+          #else 
+          gccArgv[1] = (char *)malloc(sizeof("-mabi=ilp32"));
+          (void)strcpy(gccArgv[1],"-mabi=ilp32");
+          #endif /* X86_64 */
+
+          for(i=1; i<argc; ++i)
+             gccArgv[i+1] = argv[i];
+          gccArgv[i+2] = (char *)NULL;
+
+
+          /*----------------------------------------------------*/
+          /* Point of no return we are gcc proper from heronin! */
+          /*----------------------------------------------------*/
+
+          if(strcmp(cmdStr,"gcc") == 0 || strcmp(cmdStr,"cc") == 0)
+            (void)execvp((char *)"BINDIR/gcc64",(char **)gccArgv);
+
+
+          /*----------------------------------------------------*/
+          /* Point of no return we are g++ proper from heronin! */
+          /*----------------------------------------------------*/
+
+          else if(strcmp(cmdStr,"g++") == 0 || strcmp(cmdStr,"c++") == 0)
+             (void)execvp((char *)"BINDIR/g++64",(char **)gccArgv);
+
+
+          /*--------------------------------------------------------*/
+          /* Point of no return we are fortran proper from heronin! */
+          /*--------------------------------------------------------*/
+
+          else if(strcmp(cmdStr,"gfortran") == 0 || strcmp(cmdStr,"fortran") == 0)
+             (void)execvp((char *)"BINDIR/gfortran64",(char **)gccArgv);
+
+
+          /*-----------------------------------------------------------------*/
+          /* Point of no return this gnat is a 64 bit mosquito from heronin! */
+          /*-----------------------------------------------------------------*/
+
+          else if(strcmp(cmdStr,"gnat") == 0 || strcmp(cmdStr,"ada") == 0)
+             (void)execvp((char *)"BINDIR/gnat64",(char **)gccArgv);
+
+
+          /*-----------------------------------------------------*/
+          /* Point of no return we are JAVA proper from heronin! */
+          /*-----------------------------------------------------*/
+
+          else if(strcmp(cmdStr,"gcj") == 0 | strcmp(cmdStr,"javac") == 0)
+             (void)execvp((char *)"BINDIR/gcj64",(char **)gccArgv);
+       
+          (void)fprintf(stderr,"%s: exec failed\n\n",cmdStr);
+          (void)fflush(stderr);
+
+          exit(-1);
+       }
+
+
+       /*-------*/
+       /* Intel */
+       /*-------*/
+
+       #ifdef X86_64
+       else if(strcmp(modeStr,"-m64") == 0)
+
+
+       /*-----*/
+       /* ARM */
+       /*-----*/
+
+       #else
+       else if(strcmp(modeStr,"-m64") == 0)
+       #endif /* X86_64 */
+
+
+       {  gccArgv = (char **)calloc(argc + 2,sizeof(char **));
+
+          /*---------------------*/
+          /* 64 bit binary model */
+          /*---------------------*/
+
+          gccArgv[0] = (char *)malloc(sizeof("gcc64"));
+          (void)strcpy(gccArgv[0],"gcc64");
+
+
+          /*-------*/
+          /* Intel */
+          /*-------*/
+
+          #ifdef X86_64
+          gccArgv[1] = (char *)malloc(sizeof("-m64"));
+          (void)strcpy(gccArgv[1],"-m64");
+
+
+          /*-----*/
+          /* ARM */
+          /*-----*/
+
+          #else
+          gccArgv[1] = (char *)malloc(sizeof("-mabi=lp64"));
+          (void)strcpy(gccArgv[1],"-mabi=lp64");
+          #endif /* X86_64 */
+
+          for(i=1; i<argc; ++i)
+             gccArgv[i+1] = argv[i];
+          gccArgv[i+2] = (char *)NULL;
+
+
+          /*----------------------------------------------------*/
+          /* Point of no return we are gcc proper from heronin! */
+          /*----------------------------------------------------*/
+
+          if(strcmp(cmdStr,"gcc") == 0 || strcmp(cmdStr,"cc") == 0)
+             (void)execvp((char *)"BINDIR/gcc64",(char **)gccArgv);
+
+
+
+          /*----------------------------------------------------*/
+          /* Point of no return we are g++ proper from heronin! */
+          /*----------------------------------------------------*/
+
+          else if(strcmp(cmdStr,"g++") == 0 || strcmp(cmdStr,"c++") == 0)
+             (void)execvp((char *)"BINDIR/g++64",(char **)gccArgv);
+
+
+          /*--------------------------------------------------------*/
+          /* Point of no return we are fortran proper from heronin! */
+          /*--------------------------------------------------------*/
+
+          else if(strcmp(cmdStr,"gfortran") == 0 || strcmp(cmdStr,"fortran") == 0)
+             (void)execvp((char *)"BINDIR/gfortran64",(char **)gccArgv);
+
+
+          /*-----------------------------------------------------------------*/
+          /* Point of no return this gnat is a 64 bit mosquito from heronin! */
+          /*-----------------------------------------------------------------*/
+
+          else if(strcmp(cmdStr,"gnat") == 0 || strcmp(cmdStr,"ada") == 0)
+             (void)execvp((char *)"BINDIR/gnat64",(char **)gccArgv);
+
+          /*-----------------------------------------------------*/
+          /* Point of no return we are JAVA proper from heronin! */
+          /*-----------------------------------------------------*/
+
+          else if(strcmp(cmdStr,"gcj") == 0 || strcmp(cmdStr,"javac") == 0)
+             (void)execvp((char *)"BINDIR/gcj64",(char **)gccArgv);
+
+
+          /*-------*/
+          /* Error */
+          /*-------*/
+
+          (void)fprintf(stderr,"%s: exec failed\n\n",cmdStr);
+          (void)fflush(stderr);
+
+          exit(-1);
+       }
+
+
+       /*-----------------*/
+       /* Mode file error */
+       /*-----------------*/
+
+       else
+       {  (void)fprintf(stderr,"%s: corrupt gcc output mode file\n\n",cmdStr);
+          (void)fflush(stderr);
+
+          exit(-1);
+       }
+    }
+
+    exit(0);
+}

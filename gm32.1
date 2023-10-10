@@ -1,0 +1,80 @@
+.TH GM32 1 "25th September 2019" "PUPS build tools" "PUPS build tools"
+
+.SH NAME
+GM32 \- switch gcc compiler output model to 32 bits on x86_64 or aarch64 architectures 
+.br
+
+.SH SYNOPSIS
+.B gm32 
+.B
+[-usage | -help
+] | {
+.B -verbose
+]
+>& <log file>
+.br
+
+.SH DESCRIPTION
+.B gm32(1)
+is a utility which switches the output model for a gcc compiler running on x86_64
+compliant Intel or aarch64 compliant ARM architectures from 64 to 32 bits.
+.br
+
+
+.SH OPTIONS
+
+.B -usage | -help
+display help and copyright information for the
+.I gm32(1)
+utility.
+.br
+
+.B -verbose
+toggle
+.B verbose
+mode (error and status information is logged to
+.I standard error
+).
+.br
+
+.SH FILES
+
+.B $HOME/.gccMultiMode.cf
+and
+.B /usr/bin/gccMultiMode.cf
+which contains the current output mode flag, that is either
+.B -m32
+or
+.B -m64
+for Intel or
+.B -mabi=ilp32
+or
+.B -mabi=lp64
+for ARM. If the local file exists, it is used in preference to the global one.
+.br
+
+.B /usr/bin/gcc64
+is the base (64 bit) gcc compiler. When
+.I gm32(1)
+is installed the existing (64 bit)
+.B gcc
+compiler
+.B /usr/bin/gcc
+is copied here.
+.br
+
+.SH ENVIRONMENT VARIABLES
+None.
+.br
+
+.SH COPYRIGHT
+(C) Tumbling Dice.
+.br
+
+.SH PROGRAMMER
+M.A. O'Neill.
+.br
+
+.SH SEE ALSO
+gccMultiDriver(1), gm64(1), gmode(1)
+.br
