@@ -39,7 +39,7 @@ gmode
 <br>
 <br>
 <br>
-#### gcclinks.sh
+## gcclinks.sh
 
 This is an additional (script) based tool to switch between gcc compiler versions (typically on Debian derived Linux
 distributions). To switch to gcc-12 (for example), assuming gcc-12 has been built from sources of installed from an
