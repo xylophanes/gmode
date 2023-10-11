@@ -1,47 +1,40 @@
-Gmode
------
+## Gmode
 
 Utility to transparently switch gcc between 32 bit and 64 bit output modes on x86_64
 and aarch compliant archtitectures.
 
-To enable gmode
----------------
+##### To enable gmode
 
 Type (after building gcc from source) type:
 ./install.csh
 
 This will also install gmode tools (in /bin) and man pages (in /usr/share/man)
 
-To disable gmode
-----------------
+##### To disable gmode
 
 Type:
 ./uninstall (rturns gcc to default build settings)
 
 This will also uninstall gmode tools and man pages.
 
-32 bit mode
------------
+##### 32 bit mode
 
 Type:
 gm32
 
-64 bit mode
------------
+##### 64 bit mode
 
 Type:
 gm64
 
 
-Show current mode
------------------
+##### Show current mode
 
 Type:
 gmode
 
 
-gcclinks.sh
------------
+#### gcclinks.sh
 
 This is an additional (script) based tool to switch between gcc compiler versions (typically on Debian derived Linux
 distributions). To switch to gcc-12 (for example), assuming gcc-12 has been built from sources of installed from an
